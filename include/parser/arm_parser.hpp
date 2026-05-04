@@ -8,7 +8,7 @@
 
 class ArmParser {
     public:
-        ArmParser(const std::vector<uint8_t>& data, cs_mode mode = CS_MODE_ARM);
+        ArmParser(const std::vector<uint8_t>& data, uint32_t baseAddress, cs_mode mode = CS_MODE_ARM);
         ~ArmParser();
         void changeMode(cs_mode mode);
         std::unique_ptr<cs_insn> getNextInstruction();
@@ -18,6 +18,7 @@ class ArmParser {
         const std::vector<uint8_t>& _data;
         csh _handle;
         cs_mode _mode;
+        uint32_t _baseAddress;
         uint64_t _offset;
 };
 

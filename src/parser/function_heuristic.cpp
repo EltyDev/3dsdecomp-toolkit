@@ -30,6 +30,5 @@ bool isFunctionStart(cs_insn& instruction)
 std::vector<Function> function_heuristic::findFunctions(const std::vector<uint8_t>& data)
 {
     std::vector<Function> functions;
-    ArmParser parser(data);
     return functions;
 }
