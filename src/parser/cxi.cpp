@@ -45,7 +45,6 @@ CXI::CXI(const std::string &path)
 found:
     if (codeOffset + codeSize > fileSize)
         throw std::runtime_error("File is too small to contain .code section");
-    std::cout << "Code Offset: " << std::hex << codeOffset << std::dec << std::endl;
     _text.resize(_header.extendedHeader.systemControlInfo.text.size);
     file.seekg(codeOffset);
     file.read(reinterpret_cast<char*>(_text.data()), _header.extendedHeader.systemControlInfo.text.size);
