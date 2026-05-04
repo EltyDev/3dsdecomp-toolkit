@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <vector>
 
 enum class ContentFormType : uint8_t
 {
@@ -281,6 +282,21 @@ struct ExtendedHeader
     AccessControlInfo accessControlInfo2;
 };
 
+
+struct FileHeader
+{
+    char filename[0x8];
+    uint32_t offset;
+    uint32_t size;
+};
+
+struct ExeFSHeader
+{
+    FileHeader fileHeaders[10];
+    uint8_t reserved[0x20];
+    uint8_t fileHashes[10][32];
+};
+
 struct CXIHeader
 {
     NCCHHeader header;
@@ -293,9 +309,12 @@ class CXI
         CXI(const std::string &path);
         ~CXI() = default;
         const CXIHeader& getHeader() const;
+        std::vector<uint8_t> &getTextSection();
     protected:
     private:
         CXIHeader _header;
+        std::vector<uint8_t> _text;
+        ExeFSHeader _exefsHeader;
 };
 
 #endif /* !CXI_HPP_ */
