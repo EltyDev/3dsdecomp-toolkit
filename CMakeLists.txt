@@ -12,6 +12,7 @@ add_executable(${PROJECT_NAME}
     src/parser/function_heuristic.cpp
     src/parser/arm_parser.cpp
     src/parser/cxi.cpp
+    src/utils/atomic_bitmap.cpp
     src/cli.cpp
 )
 

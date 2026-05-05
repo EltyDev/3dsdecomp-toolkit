@@ -2,13 +2,13 @@
 #include "capstone/arm.h"
 #include "capstone/capstone.h"
 #include "parser/arm_parser.hpp"
-#include <cstddef>
+#include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <cstdint>
-#include <memory>
-#include <queue>
 #include <vector>
 #include <iostream>
+#include <thread>
 
 namespace
 {
@@ -20,7 +20,7 @@ namespace
                     return true;
             }
         } if (!strcmp(instruction.mnemonic, "bx")) {
-            if (instruction.detail->arm.operands[0].reg == ARM_REG_LR)
+            if (instruction.detail->arm.cc == ARM_CC_AL && instruction.detail->arm.operands[0].reg == ARM_REG_LR)
                 return true;
         }
         return false;
@@ -41,6 +41,10 @@ namespace
                     return true;
             }
         }
+        if (!strcmp(instruction.mnemonic, "ldr") &&
+            instruction.detail->arm.operands[0].type == ARM_OP_REG &&
+            instruction.detail->arm.operands[0].reg == ARM_REG_PC)
+            return true;
         return false;
     }
 
@@ -60,69 +64,143 @@ namespace
         uint32_t start = 0;
         bool inFunction = false;
         while (!parser.isEnd()) {
-            cs_insn *ins = parser.getNextInstruction();
-            if (!ins)
+            size_t count;
+            cs_insn *block = parser.getNextInstructions(64, &count);
+            if (!block)
                 continue;
-            if (!inFunction && isFunctionStart(*ins)) {
-                start = ins->address;
-                inFunction = true;
-            }
-            if (inFunction && isFunctionEnd(*ins)) {
-                functions.emplace_back(mode, start, ins->address);
-                inFunction = false;
-                start = 0;
+            for (size_t i = 0; i < count; i++) {
+                cs_insn& ins = block[i];
+                if (!inFunction && isFunctionStart(ins)) {
+                    start = ins.address;
+                    inFunction = true;
+                }
+                if (inFunction && isFunctionEnd(ins)) {
+                    functions.emplace_back(mode, start, ins.address + ins.size);
+                    inFunction = false;
+                    start = 0;
+                }
             }
         }
-        std::cout << "RAM usage after linear scan: " << functions.size() * sizeof(Function) << " bytes\n";
+        std::cout << "Found " << functions.size() << " functions in " << (mode == CS_MODE_ARM ? "ARM" : "THUMB") << " mode." << std::endl;
         return functions;
+    }
+
+    void threadHeuristic(HeuristicContext &context, ArmParser parser) {
+        size_t dataSize = parser.getDataSize();
+        uint32_t baseAddress = parser.getBaseAddress();
+        std::vector<Function> localFunctions;
+        while (true) {
+            HeuristicEntry entry;
+            if (!context.toProcess.try_pop(entry)) {
+                if (context.activeThreads.load(std::memory_order_acquire) == 0 && context.toProcess.empty())
+                    break;
+                std::this_thread::yield();
+                continue;
+            }
+            context.activeThreads.fetch_add(1, std::memory_order_relaxed);
+            parser.goToAddress(entry.address);
+            parser.changeMode(entry.mode);
+            if (!context.processed.insert(entry.address)) {
+                context.activeThreads.fetch_sub(1, std::memory_order_release);
+                continue;
+            }
+            while (!parser.isEnd()) {
+                size_t count;
+                cs_insn *block = parser.getNextInstructions(64, &count);
+                if (!block)
+                    continue;
+                for (size_t i = 0; i < count; i++) {
+                    cs_insn& ins = block[i];
+                    if (ins.address != entry.address && context.knownFunctions.contains(ins.address)) {
+                        if (!entry.foundBefore)
+                            localFunctions.emplace_back(entry.mode, entry.address, ins.address);
+                        goto nextEntry;
+                    }
+                    if (isNewFunction(ins)) {
+                        uint32_t target = ins.detail->arm.operands[0].type == ARM_OP_IMM ? static_cast<uint32_t>(ins.detail->arm.operands[0].imm) & ~1u : 0;
+                        if (target == 0 || target < baseAddress || target >= baseAddress + dataSize)
+                            continue;
+                        context.toProcess.push({static_cast<uint32_t>(ins.detail->arm.operands[0].imm) & ~1u, getNextMode(ins, entry.mode), false});
+                    } if (isFunctionEnd(ins)) {
+                        if (!entry.foundBefore)
+                            localFunctions.emplace_back(entry.mode, entry.address, ins.address + ins.size);
+                        goto nextEntry;
+                    }
+                    if (!strcmp(ins.mnemonic, "b") && ins.detail->arm.operands[0].type == ARM_OP_IMM) {
+                        uint32_t target = ins.detail->arm.operands[0].imm & ~1u;
+                        if (target == 0 || target < baseAddress || target >= baseAddress + dataSize)
+                            continue;
+                        bool isKnownFunction = context.knownFunctions.contains(target);
+                        bool isTailCall = context.processed.contains(target) 
+                                    || target < entry.address
+                                    || isKnownFunction;
+                        context.toProcess.push({target, entry.mode, !isKnownFunction});
+                        if (isTailCall) {
+                            if (!entry.foundBefore)
+                                localFunctions.emplace_back(entry.mode, entry.address, ins.address + ins.size);
+                            goto nextEntry;
+                        }
+                    }
+                }
+            }
+            nextEntry:
+            context.activeThreads.fetch_sub(1, std::memory_order_release);
+        }
+        context.functions.insert(localFunctions.begin(), localFunctions.end());
     }
 
 }
 
 std::vector<Function> function_heuristic::findFunctions(const std::vector<uint8_t>& data, uint32_t baseAddress)
 {
-    std::vector<Function> functions;
+    ConcurrentVector<Function> functions;
     auto armFunctions = linearScan(data, baseAddress, CS_MODE_ARM);
     auto thumbFunctions = linearScan(data, baseAddress, CS_MODE_THUMB);
     functions.insert(functions.end(), armFunctions.begin(), armFunctions.end());
     functions.insert(functions.end(), thumbFunctions.begin(), thumbFunctions.end());
-    return functions;
-    std::queue<HeuristicEntry> toProcess({{baseAddress, CS_MODE_ARM, false}});
-    for (const auto& func : functions)
+    ConcurrentQueue<HeuristicEntry> toProcess;
+    AtomicBitmap knownFunctions(data.size(), baseAddress);
+    toProcess.push({baseAddress, cs_mode::CS_MODE_ARM, false});
+    for (const auto& func : functions) {
         toProcess.push({func.start, func.mode, true});
-    std::vector<uint32_t> processed;
-    ArmParser parser(data, baseAddress);
-    while (!toProcess.empty()) {
-        HeuristicEntry entry = toProcess.front();
-        parser.goToAddress(entry.address);
-        parser.changeMode(entry.mode);
-        toProcess.pop();
-        if (std::find(processed.begin(), processed.end(), entry.address) != processed.end())
-            continue;
-        processed.push_back(entry.address);
-        while (!parser.isEnd()) {
-            cs_insn *ins = parser.getNextInstruction();
-            if (!ins)
-                continue;
-            if (isNewFunction(*ins)) {
-                uint32_t target = ins->detail->arm.operands[0].type == ARM_OP_IMM ? static_cast<uint32_t>(ins->detail->arm.operands[0].imm) & ~1u : 0;
-                if (target == 0 || target < baseAddress || target >= baseAddress + data.size())
-                    continue;
-                toProcess.push({static_cast<uint32_t>(ins->detail->arm.operands[0].imm) & ~1u, getNextMode(*ins, entry.mode), false});
-            } if (isFunctionEnd(*ins)) {
-                if (entry.foundBefore)
-                    functions.emplace_back(entry.mode, entry.address, ins->address);
-                break;
-            }
-            if (!strcmp(ins->mnemonic, "b") && ins->detail->arm.operands[0].type == ARM_OP_IMM) {
-                uint32_t target = ins->detail->arm.operands[0].imm;
-                if (std::find(processed.begin(), processed.end(), target) != processed.end()) {
-                    if (entry.foundBefore)
-                        functions.emplace_back(entry.mode, entry.address, ins->address);
-                    break;
-                }
-            }
-        }
+        knownFunctions.insert(func.start);
     }
-    return functions;
+    ConcurrentVector<uint32_t> processed;
+    ArmParser parser(data, baseAddress);
+    std::cout << "Starting heuristic function search with " << toProcess.size() << " initial entries." << std::endl;
+    std::vector<std::thread> threads(std::thread::hardware_concurrency());
+    HeuristicContext context{std::atomic_int32_t(0), toProcess,AtomicBitmap(data.size(), baseAddress), functions, std::move(knownFunctions)};
+    for (auto& thread : threads)
+        thread = std::thread(threadHeuristic, std::ref(context), ArmParser(data, baseAddress));
+    for (auto& thread : threads)
+        thread.join();
+    std::sort(context.functions.begin(), context.functions.end(), [](const Function& a, const Function& b) {
+        return a.start < b.start;
+    });
+    std::cout << "Removing duplicates from function list." << std::endl;
+    (*context.functions).erase(std::unique(context.functions.begin(), context.functions.end(), [](const Function& a, const Function& b) {
+        return a.start == b.start;
+    }), context.functions.end());
+    std::cout << "Removing overlapping functions from function list." << std::endl;
+    for (size_t i = 0; i + 1 < context.functions.size(); i++) {
+        Function& curr = context.functions[i];
+        Function& next = context.functions[i + 1];
+        if (next.start > curr.start && next.start < curr.end && next.end == curr.end)
+            curr.end = next.start;
+    }
+    auto sorted = *context.functions;
+    std::cout << "Removing functions that are fully contained in other functions from function list." << std::endl;
+    (*context.functions).erase(std::remove_if(context.functions.begin(), context.functions.end(), [&](const Function& f) {
+        auto it = std::lower_bound(sorted.begin(), sorted.end(), f, [](const Function& a, const Function& b) {
+            return a.start < b.start;
+        });
+        if (it != sorted.begin()) {
+            --it;
+            if (f.start >= it->start && f.end <= it->end && f.start != it->start)
+                return true;
+        }
+        return false;
+    }), context.functions.end());
+    std::cout << "Heuristic function search completed. Found " << context.functions.size() << " functions." << std::endl;
+    return *context.functions;
 }
