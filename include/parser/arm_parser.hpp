@@ -11,7 +11,10 @@ class ArmParser {
         ArmParser(const std::vector<uint8_t>& data, uint32_t baseAddress, cs_mode mode = CS_MODE_ARM);
         ~ArmParser();
         void changeMode(cs_mode mode);
-        std::unique_ptr<cs_insn> getNextInstruction();
+        cs_insn* getNextInstruction();
+        bool isEnd() const;
+        void goToAddress(uint32_t address);
+        void switchMode();
     protected:
     private:
         void create(cs_mode mode);
@@ -20,6 +23,7 @@ class ArmParser {
         cs_mode _mode;
         uint32_t _baseAddress;
         uint64_t _offset;
+        cs_insn *_lastInstruction;
 };
 
 #endif /* !ARM_PARSER_HPP_ */

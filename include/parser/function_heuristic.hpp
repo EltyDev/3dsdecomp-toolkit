@@ -12,14 +12,16 @@ struct Function
     uint32_t end;
 };
 
+struct HeuristicEntry
+{
+    uint32_t address;
+    cs_mode mode;
+    bool foundBefore;
+};
+
 namespace function_heuristic
 {
-    std::vector<Function> findFunctions(const std::vector<uint8_t>& data);
-}
-
-namespace
-{
-    bool isFunctionEnd(cs_insn& instruction);
+    std::vector<Function> findFunctions(const std::vector<uint8_t>& data, uint32_t baseAddress);
 }
 
 
