@@ -1,6 +1,7 @@
 #include "parser/cxi.hpp"
 #include <cstdint>
 #include <filesystem>
+#include <cstring>
 
 CXI::CXI(const std::string &path)
 {
@@ -46,8 +47,12 @@ found:
     if (codeOffset + codeSize > fileSize)
         throw std::runtime_error("File is too small to contain .code section");
     _text.resize(_header.extendedHeader.systemControlInfo.text.size);
+    _data.resize(_header.extendedHeader.systemControlInfo.data.size);
+    _rodata.resize(_header.extendedHeader.systemControlInfo.rodata.size);
     file.seekg(codeOffset);
     file.read(reinterpret_cast<char*>(_text.data()), _header.extendedHeader.systemControlInfo.text.size);
+    file.read(reinterpret_cast<char*>(_rodata.data()), _header.extendedHeader.systemControlInfo.rodata.size);
+    file.read(reinterpret_cast<char*>(_data.data()), _header.extendedHeader.systemControlInfo.data.size);
 }
 
 const CXIHeader& CXI::getHeader() const
@@ -58,4 +63,14 @@ const CXIHeader& CXI::getHeader() const
 std::vector<uint8_t> &CXI::getTextSection()
 {
     return _text;
+}
+
+std::vector<uint8_t> &CXI::getDataSection()
+{
+    return _data;
+}
+
+std::vector<uint8_t> &CXI::getRodataSection()
+{
+    return _rodata;
 }

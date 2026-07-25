@@ -9,6 +9,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(FetchContent)
 
 add_executable(${PROJECT_NAME}
+    src/output/asm/asm_block.cpp
+    src/output/asm/asm_file.cpp
+    src/output/ninja/build_rule.cpp
+    src/output/ninja/build_script.cpp
+    src/output/ninja/rule.cpp
+    src/output/ldscript/ldscript.cpp
+    src/output/ldscript/ldsection.cpp
     src/parser/function_heuristic.cpp
     src/parser/arm_parser.cpp
     src/parser/cxi.cpp

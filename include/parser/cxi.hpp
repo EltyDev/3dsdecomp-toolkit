@@ -310,10 +310,14 @@ class CXI
         ~CXI() = default;
         const CXIHeader& getHeader() const;
         std::vector<uint8_t> &getTextSection();
+        std::vector<uint8_t> &getDataSection();
+        std::vector<uint8_t> &getRodataSection();
     protected:
     private:
         CXIHeader _header;
         std::vector<uint8_t> _text;
+        std::vector<uint8_t> _data;
+        std::vector<uint8_t> _rodata;
         ExeFSHeader _exefsHeader;
 };
 

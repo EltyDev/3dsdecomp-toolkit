@@ -64,6 +64,11 @@ class ConcurrentVector
             return _vector.end();
         }
 
+        void clear() {
+            std::unique_lock lock(_mutex);
+            _vector.clear();
+        }
+
     private:
         std::vector<T> _vector;
         mutable std::shared_mutex _mutex;

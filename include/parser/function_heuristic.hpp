@@ -25,8 +25,9 @@ struct HeuristicEntry
 
 struct HeuristicContext
 {
-    std::atomic_int32_t activeThreads;
+    std::atomic_int32_t pendingTasks;
     ConcurrentQueue<HeuristicEntry> &toProcess;
+    AtomicBitmap scheduled;
     AtomicBitmap processed;
     ConcurrentVector<Function> &functions;
     AtomicBitmap knownFunctions;
