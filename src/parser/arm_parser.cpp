@@ -1,6 +1,5 @@
 #include "parser/arm_parser.hpp"
 #include "capstone/capstone.h"
-#include <memory>
 #include <stdexcept>
 
 ArmParser::ArmParser(const std::vector<uint8_t>& data, uint32_t baseAddress, cs_mode mode) : _data(data), _mode(mode), _baseAddress(baseAddress), _offset(0), _lastInstruction(nullptr), _nbInstructions(0)
@@ -10,7 +9,6 @@ ArmParser::ArmParser(const std::vector<uint8_t>& data, uint32_t baseAddress, cs_
 
 ArmParser::ArmParser(const ArmParser& other) : _data(other._data), _mode(other._mode), _baseAddress(other._baseAddress), _offset(other._offset), _lastInstruction(nullptr), _nbInstructions(other._nbInstructions)
 {
-    other.close();
     create(_mode);
 }
 
@@ -39,7 +37,7 @@ cs_insn* ArmParser::getNextInstruction()
     cs_insn *instruction;
     size_t count = cs_disasm(_handle, _data.data() + _offset, _data.size() - _offset, _baseAddress + _offset, 1, &instruction);
     if (_lastInstruction)
-        cs_free(_lastInstruction, 1);
+        cs_free(_lastInstruction, _nbInstructions);
     _nbInstructions = count;
     _lastInstruction = count > 0 ? instruction : nullptr;
     if (count > 0) {
@@ -100,4 +98,9 @@ uint32_t ArmParser::getBaseAddress() const
 size_t ArmParser::getDataSize() const
 {
     return _data.size();
+}
+
+cs_mode ArmParser::getMode() const
+{
+    return _mode;
 }

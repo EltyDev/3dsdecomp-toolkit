@@ -57,6 +57,17 @@ found:
     file.read(reinterpret_cast<char*>(_data.data()), _header.extendedHeader.systemControlInfo.data.size);
 }
 
+std::vector<uint8_t> CXI::getTotalData() const
+{
+    std::vector<uint8_t> totalData;
+    totalData.reserve(_text.size() + _rodata.size() + _data.size() + _header.extendedHeader.systemControlInfo.bssSize);
+    totalData.insert(totalData.end(), _text.begin(), _text.end());
+    totalData.insert(totalData.end(), _rodata.begin(), _rodata.end());
+    totalData.insert(totalData.end(), _data.begin(), _data.end());
+    totalData.insert(totalData.end(), _header.extendedHeader.systemControlInfo.bssSize, 0);
+    return totalData;
+}
+
 const CXIHeader& CXI::getHeader() const
 {
     return _header;

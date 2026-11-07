@@ -39,7 +39,7 @@ class ExecutionRegion : public Writable {
         void addAttribute(Attribute attribute, Value value);
         void addInputSection(const InputSection& inputSection);
     private:
-        static constexpr std::string ATTRIBUTE_NAMES[] = {
+        static constexpr std::string_view ATTRIBUTE_NAMES[] = {
             "",
             "ABSOLUTE",
             "ALIGN",

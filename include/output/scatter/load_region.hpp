@@ -26,7 +26,7 @@ class LoadRegion : public Writable {
         static std::string getAttributeName(Attribute attribute);
         void addExecutionRegion(const ExecutionRegion& executionRegion);
     private:
-        static constexpr std::string ATTRIBUTE_NAMES[] = {
+        static constexpr std::string_view ATTRIBUTE_NAMES[] = {
             "",
             "ABSOLUTE",
             "ALIGN",

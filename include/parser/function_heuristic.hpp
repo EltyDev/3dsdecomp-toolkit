@@ -1,6 +1,7 @@
 #ifndef FUNCTION_HEURISTIC_HPP_
 #define FUNCTION_HEURISTIC_HPP_
 
+#include <array>
 #include <atomic>
 #include <stdint.h>
 #include <vector>
@@ -20,17 +21,15 @@ struct HeuristicEntry
 {
     uint32_t address;
     cs_mode mode;
-    bool foundBefore;
 };
 
 struct HeuristicContext
 {
-    std::atomic_int32_t pendingTasks;
     ConcurrentQueue<HeuristicEntry> &toProcess;
-    AtomicBitmap scheduled;
     AtomicBitmap processed;
-    ConcurrentVector<Function> &functions;
-    AtomicBitmap knownFunctions;
+    const std::vector<uint8_t>& data;
+    const size_t dataSize;
+    const uint32_t baseAddress;
 };
 
 namespace function_heuristic

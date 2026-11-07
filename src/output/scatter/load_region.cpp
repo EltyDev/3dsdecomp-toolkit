@@ -45,7 +45,7 @@ void LoadRegion::addAttribute(Attribute attribute) {
 }
 
 std::string LoadRegion::getAttributeName(Attribute attribute) {
-    return ATTRIBUTE_NAMES[static_cast<uint8_t>(attribute)];
+    return std::string(ATTRIBUTE_NAMES[static_cast<uint8_t>(attribute)]);
 }
 
 void LoadRegion::addExecutionRegion(const ExecutionRegion& executionRegion) {

@@ -4,7 +4,6 @@
 #include <capstone/capstone.h>
 #include <cstdint>
 #include <vector>
-#include <memory>
 
 class ArmParser {
     public:
@@ -20,6 +19,7 @@ class ArmParser {
         uint32_t getBaseAddress() const;
         size_t getDataSize() const;
         void close() const;
+        cs_mode getMode() const;
     protected:
     private:
         void create(cs_mode mode);

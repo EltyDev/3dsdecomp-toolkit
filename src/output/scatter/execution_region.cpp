@@ -1,5 +1,6 @@
 #include "output/scatter/execution_region.hpp"
 #include "algorithm"
+#include <string>
 
 ExecutionRegion::ExecutionRegion(const std::string &regionName, bool isAbsolute, uint32_t baseAddress, uint32_t maxSize)
     : _regionName(regionName), _isAbsolute(isAbsolute), _baseAddress(baseAddress), _maxSize(maxSize) {}
@@ -35,7 +36,7 @@ void ExecutionRegion::write(std::ofstream& output) const {
 }
 
 std::string ExecutionRegion::getAttributeName(Attribute attribute) {
-    return ATTRIBUTE_NAMES[static_cast<uint8_t>(attribute)];
+    return std::string(ATTRIBUTE_NAMES[static_cast<uint8_t>(attribute)]);
 }
 
 void ExecutionRegion::addAttribute(Attribute attribute, Value value) {
