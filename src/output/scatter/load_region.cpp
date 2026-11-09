@@ -1,5 +1,6 @@
 #include "output/scatter/load_region.hpp"
 #include "algorithm"
+#include "output/scatter/execution_region.hpp"
 
 LoadRegion::LoadRegion(const std::string &regionName, bool isAbsolute, uint32_t baseAddress, uint32_t maxSize) :
     _regionName(regionName),
@@ -8,9 +9,7 @@ LoadRegion::LoadRegion(const std::string &regionName, bool isAbsolute, uint32_t 
     _maxSize(maxSize) {}
 
 void LoadRegion::write(std::ofstream& output) const {
-    std::string upperRegionName = _regionName;
-    std::transform(upperRegionName.begin(), upperRegionName.end(), upperRegionName.begin(), ::toupper);
-    output << "LR_" << upperRegionName << " ";
+    output << _regionName << " ";
     if (_isAbsolute)
         output << "0x" << std::hex << _baseAddress << " ";
     else
@@ -50,4 +49,23 @@ std::string LoadRegion::getAttributeName(Attribute attribute) {
 
 void LoadRegion::addExecutionRegion(const ExecutionRegion& executionRegion) {
     _executionRegions.push_back(executionRegion);
+}
+
+ExecutionRegion& LoadRegion::getNearestExecutionRegion(uint32_t address) {
+    auto it = std::upper_bound(
+        _executionRegions.begin(),
+        _executionRegions.end(),
+        address,
+        [](uint32_t addr, const ExecutionRegion& region) {
+            return addr < region.getBaseAddress();
+        }
+    );
+    if (it == _executionRegions.begin())
+        throw std::runtime_error("No execution region found.");
+
+    return *std::prev(it);
+}
+
+std::vector<ExecutionRegion>& LoadRegion::getExecutionRegions() {
+    return _executionRegions;
 }

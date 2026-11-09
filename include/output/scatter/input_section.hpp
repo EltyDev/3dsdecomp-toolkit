@@ -11,6 +11,7 @@ class InputSection : public Writable {
         InputSection(const std::string &selectPattern, std::initializer_list<std::string_view> attributes);
         void write(std::ofstream& output) const override;
         void addAttribute(const std::string &attribute);
+        const std::vector<std::string>& getAttributes() const;
     protected:
     private:
         std::string _selectPattern;

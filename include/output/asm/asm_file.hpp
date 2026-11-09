@@ -6,7 +6,7 @@
 
 class ASMFile : public Writable {
     public:
-        ASMFile(const std::string &section);
+        ASMFile();
         ~ASMFile() = default;
         void write(std::ofstream& output) const override;
         void addBlock(const ASMBlock &block);
@@ -14,7 +14,6 @@ class ASMFile : public Writable {
     protected:
     private:
         std::vector<ASMBlock> _blocks;
-        const std::string _section;
 };
 
 #endif /* !ASM_FILE_HPP_ */

@@ -312,6 +312,7 @@ class CXI
         std::vector<uint8_t> &getTextSection();
         std::vector<uint8_t> &getDataSection();
         std::vector<uint8_t> &getRodataSection();
+        std::vector<uint8_t> getTotalData() const;
     protected:
     private:
         CXIHeader _header;

@@ -18,6 +18,10 @@ add_executable(${PROJECT_NAME}
     src/output/scatter/load_region.cpp
     src/output/scatter/execution_region.cpp
     src/output/scatter/input_section.cpp
+    src/input/split/split_section.cpp
+    src/input/split/split_file.cpp
+    src/input/split/split_unit.cpp
+    src/input/ida_export.cpp
     src/parser/function_heuristic.cpp
     src/parser/arm_parser.cpp
     src/parser/cxi.cpp
@@ -31,11 +35,17 @@ FetchContent_Declare(
     GIT_TAG 5.0.7
 )
 
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+)
+
 FetchContent_MakeAvailable(capstone)
+FetchContent_MakeAvailable(argparse)
 
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_link_libraries(${PROJECT_NAME} PRIVATE capstone)
+target_link_libraries(${PROJECT_NAME} PRIVATE capstone argparse)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

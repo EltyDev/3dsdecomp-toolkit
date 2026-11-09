@@ -18,3 +18,7 @@ void InputSection::write(std::ofstream& output) const {
 void InputSection::addAttribute(const std::string &attribute) {
     _attributes.push_back(attribute);
 }
+
+const std::vector<std::string>& InputSection::getAttributes() const {
+    return _attributes;
+}

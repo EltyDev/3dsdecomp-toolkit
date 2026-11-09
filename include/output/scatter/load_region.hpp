@@ -25,6 +25,8 @@ class LoadRegion : public Writable {
         void addAttribute(Attribute attribute, Value value);
         static std::string getAttributeName(Attribute attribute);
         void addExecutionRegion(const ExecutionRegion& executionRegion);
+        ExecutionRegion& getNearestExecutionRegion(uint32_t address);
+        std::vector<ExecutionRegion>& getExecutionRegions();
     private:
         static constexpr std::string ATTRIBUTE_NAMES[] = {
             "",

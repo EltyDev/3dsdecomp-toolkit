@@ -38,6 +38,8 @@ class ExecutionRegion : public Writable {
         void addAttribute(Attribute attribute);
         void addAttribute(Attribute attribute, Value value);
         void addInputSection(const InputSection& inputSection);
+        const uint32_t getBaseAddress() const;
+        void sortInputSectionsByStartAddress();
     private:
         static constexpr std::string ATTRIBUTE_NAMES[] = {
             "",

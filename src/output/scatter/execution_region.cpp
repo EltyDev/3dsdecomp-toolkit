@@ -6,9 +6,7 @@ ExecutionRegion::ExecutionRegion(const std::string &regionName, bool isAbsolute,
 
 
 void ExecutionRegion::write(std::ofstream& output) const {
-    std::string upperRegionName = _regionName;
-    std::transform(upperRegionName.begin(), upperRegionName.end(), upperRegionName.begin(), ::toupper);
-    output << "ER_" << upperRegionName << " ";
+    output << _regionName << " ";
     if (_isAbsolute)
         output << "0x" << std::hex << _baseAddress << " ";
     else
@@ -48,4 +46,26 @@ void ExecutionRegion::addAttribute(Attribute attribute) {
 
 void ExecutionRegion::addInputSection(const InputSection& inputSection) {
     _inputs.push_back(inputSection);
+}
+
+const uint32_t ExecutionRegion::getBaseAddress() const {
+    return _baseAddress;
+}
+
+#include <iostream>
+
+void  ExecutionRegion::sortInputSectionsByStartAddress() {
+    std::sort(_inputs.begin(), _inputs.end(), [](const InputSection& a, const InputSection& b) {
+        std::vector<std::string> aAttributes = a.getAttributes();
+        std::vector<std::string> bAttributes = b.getAttributes();
+        if (aAttributes.empty() || bAttributes.empty())
+            return false;
+        if (aAttributes.size() > 1 || bAttributes.size() > 1)
+            return false;
+        std::string valueA = aAttributes[0].substr(aAttributes[0].find('_') + 1);
+        std::string valueB = bAttributes[0].substr(bAttributes[0].find('_') + 1);
+        uint32_t aStart = std::stoul(valueA, nullptr, 16);  
+        uint32_t bStart = std::stoul(valueB, nullptr, 16);
+        return aStart < bStart;
+    });
 }
